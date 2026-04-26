@@ -58,8 +58,18 @@ export default function HomeScreen() {
 
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.tabBarBackground, paddingTop: insets.top + 12 }]}>
-        <Text style={styles.headerTitle}>📖 Ma Bible</Text>
-        <Text style={styles.headerDate}>{today}</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>📖 Ma Bible</Text>
+            <Text style={styles.headerDate}>{today}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push('/settings' as never)}
+            style={styles.settingsBtn}
+          >
+            <Text style={styles.settingsIcon}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -164,6 +174,17 @@ const styles = StyleSheet.create({
     color: '#C4956A',
     marginTop: 2,
     textTransform: 'capitalize',
+  },
+  headerRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  },
+  settingsBtn: {
+    padding: 6,
+  },
+  settingsIcon: {
+    fontSize: 24,
   },
   scroll: {
     paddingTop: 20,
