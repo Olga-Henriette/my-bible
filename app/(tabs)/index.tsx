@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet } from 'react-native';
-export default function ReadScreen() {
+export default function HomeScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>📖 Lecture</Text>
+      <Text style={styles.text}>📖 Accueil</Text>
     </View>
   );
 }
