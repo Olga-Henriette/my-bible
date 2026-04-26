@@ -25,7 +25,11 @@ import { Verse } from '@/types/bible';
 export default function ReadScreen() {
   const { colors, settings } = useSettings();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ bookNumber?: string; chapter?: string }>();
+  const params = useLocalSearchParams<{ 
+    bookNumber?: string; 
+    chapter?: string; 
+    verseNumber?: string
+  }>();
   const { lastPosition } = useLastPosition();
 
   const {
@@ -44,6 +48,7 @@ export default function ReadScreen() {
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<Verse | null>(null);
+  const [targetVerse, setTargetVerse] = useState<number | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -55,12 +60,32 @@ export default function ReadScreen() {
     const chapterNum = params.chapter
       ? parseInt(params.chapter)
       : lastPosition.chapter;
+    const verseNum = params.verseNumber
+      ? parseInt(params.verseNumber)
+      : null;
+
+    setTargetVerse(verseNum); 
     loadChapter(bookNum, chapterNum);
-  }, []);
+  }, [params.bookNumber, params.chapter, params.verseNumber]);
 
   // Remonte en haut à chaque changement de chapitre
   useEffect(() => {
-    if (currentChapter) {
+    if (!currentChapter) return;
+
+    if (targetVerse) {
+      // Scroll vers le verset exact
+      const index = currentChapter.verses.findIndex(v => v.verse === targetVerse);
+      if (index !== -1) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index,
+            animated: true,
+            viewPosition: 0.3, // le verset apparaît au tiers supérieur de l'écran
+          });
+        }, 300); // légère attente pour que la FlatList soit prête
+      }
+    } else {
+      // Pas de verset cible → remonte en haut
       flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     }
   }, [currentChapter]);
@@ -121,6 +146,16 @@ export default function ReadScreen() {
           styles.list,
           { paddingBottom: insets.bottom + 90 },
         ]}
+        onScrollToIndexFailed={info => {
+          // Attend que la liste soit chargée puis réessaie
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: info.index,
+              animated: true,
+              viewPosition: 0.3,
+            });
+          }, 500);
+        }}
         renderItem={({ item }) => (
           <VerseItem
             verse={item}
