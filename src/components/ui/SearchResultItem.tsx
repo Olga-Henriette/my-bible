@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { memo } from 'react';
 import { useSettings } from '@/services/SettingsContext';
 import { Verse } from '@/types/bible';
 
@@ -8,7 +9,6 @@ interface SearchResultItemProps {
   onPress: (verse: Verse) => void;
 }
 
-// Découpe le texte pour mettre en surbrillance le terme recherché
 function HighlightedText({
   text,
   query,
@@ -24,10 +24,18 @@ function HighlightedText({
     return <Text style={[styles.verseText, { color }]}>{text}</Text>;
   }
 
-  const normalized = query.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const normalized = query
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
   const parts: { text: string; highlight: boolean }[] = [];
   let remaining = text;
-  let lowerRemaining = remaining.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  let lowerRemaining = remaining
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
   while (remaining.length > 0) {
     const index = lowerRemaining.indexOf(normalized);
@@ -38,16 +46,25 @@ function HighlightedText({
     if (index > 0) {
       parts.push({ text: remaining.slice(0, index), highlight: false });
     }
-    parts.push({ text: remaining.slice(index, index + query.length), highlight: true });
+    parts.push({
+      text: remaining.slice(index, index + query.length),
+      highlight: true,
+    });
     remaining = remaining.slice(index + query.length);
-    lowerRemaining = remaining.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    lowerRemaining = remaining
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
   }
 
   return (
     <Text style={[styles.verseText, { color }]}>
       {parts.map((part, i) =>
         part.highlight ? (
-          <Text key={i} style={[styles.highlight, { backgroundColor: highlightColor }]}>
+          <Text
+            key={i}
+            style={[styles.highlight, { backgroundColor: highlightColor }]}
+          >
             {part.text}
           </Text>
         ) : (
@@ -58,27 +75,23 @@ function HighlightedText({
   );
 }
 
-export default function SearchResultItem({
-  verse,
-  query,
-  onPress,
-}: SearchResultItemProps) {
+function SearchResultItem({ verse, query, onPress }: SearchResultItemProps) {
   const { colors } = useSettings();
 
   return (
     <TouchableOpacity
       onPress={() => onPress(verse)}
       activeOpacity={0.75}
-      style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[
+        styles.container,
+        { backgroundColor: colors.card, borderColor: colors.border },
+      ]}
     >
-      {/* Référence */}
       <View style={[styles.refBadge, { backgroundColor: colors.surface }]}>
         <Text style={[styles.refText, { color: colors.primary }]}>
           {verse.book_name} {verse.chapter}:{verse.verse}
         </Text>
       </View>
-
-      {/* Texte avec surbrillance */}
       <HighlightedText
         text={verse.text}
         query={query}
@@ -88,6 +101,8 @@ export default function SearchResultItem({
     </TouchableOpacity>
   );
 }
+
+export default memo(SearchResultItem);
 
 const styles = StyleSheet.create({
   container: {

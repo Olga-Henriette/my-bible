@@ -20,6 +20,7 @@ import VerseCard from '@/components/ui/VerseCard';
 import StatCard from '@/components/ui/StatCard';
 
 import { Verse } from '@/types/bible';
+import ScreenHeader from '@/components/ui/ScreenHeader';
 
 export default function HomeScreen() {
   const { colors } = useSettings();
@@ -57,20 +58,16 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor={colors.tabBarBackground} />
 
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.tabBarBackground, paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.headerTitle}>📖 Ma Bible</Text>
-            <Text style={styles.headerDate}>{today}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push('/settings' as never)}
-            style={styles.settingsBtn}
-          >
-            <Text style={styles.settingsIcon}>⚙️</Text>
+      <ScreenHeader
+        title="📖 Ma Bible"
+        subtitle={today}
+        paddingTop={insets.top}
+        rightElement={
+          <TouchableOpacity onPress={() => router.push('/settings')}>
+            <Text style={{ fontSize: 24 }}>⚙️</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
@@ -158,27 +155,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#F0D080',
-    fontFamily: 'Georgia',
-  },
-  headerDate: {
-    fontSize: 13,
-    color: '#C4956A',
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
-  headerRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
   },
   settingsBtn: {
     padding: 6,

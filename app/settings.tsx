@@ -13,6 +13,8 @@ import { Colors, Theme } from '@/constants/Colors';
 import { ReadingFontSizes } from '@/constants/Typography';
 import BibleService from '@/services/BibleService';
 
+import ScreenHeader from '@/components/ui/ScreenHeader';
+
 const THEMES: { label: string; value: Theme; icon: string; desc: string }[] = [
   { label: 'Clair',  value: 'light', icon: '☀️', desc: 'Fond crème, texte brun' },
   { label: 'Sombre', value: 'dark',  icon: '🌙', desc: 'Fond sombre, texte clair' },
@@ -29,15 +31,11 @@ export default function SettingsScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
 
       {/* Header */}
-      <View style={[
-        styles.header,
-        { backgroundColor: colors.tabBarBackground, paddingTop: insets.top + 12 },
-      ]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>⚙️ Paramètres</Text>
-      </View>
+      <ScreenHeader
+        title="Paramètres"
+        paddingTop={insets.top}
+        onBack={() => router.back()}
+      />
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
@@ -188,21 +186,8 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 12,
-  },
   backBtn: { padding: 4 },
   backArrow: { fontSize: 22, color: '#F0D080' },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#F0D080',
-    fontFamily: 'Georgia',
-  },
   scroll: { paddingTop: 20, gap: 10 },
   sectionTitle: {
     fontSize: 12,

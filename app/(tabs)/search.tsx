@@ -19,6 +19,7 @@ import SearchBar from '@/components/ui/SearchBar';
 import SearchResultItem from '@/components/ui/SearchResultItem';
 
 import { Verse, Testament } from '@/types/bible';
+import ScreenHeader from '@/components/ui/ScreenHeader';
 
 const FILTERS: { label: string; value: Testament }[] = [
   { label: 'Tout', value: 'all' },
@@ -114,9 +115,10 @@ export default function SearchScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* ── Header ── */}
-      <View style={[styles.header, { backgroundColor: colors.tabBarBackground, paddingTop: insets.top + 12 }]}>
-        <Text style={styles.headerTitle}>🔍 Recherche</Text>
-      </View>
+      <ScreenHeader
+        title="Recherche"
+        paddingTop={insets.top}
+      />
 
       {/* Barre de recherche */}
       <View style={[styles.searchWrapper, { backgroundColor: colors.background }]}>
@@ -185,16 +187,6 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#F0D080',
-    fontFamily: 'Georgia',
-  },
   searchWrapper: {
     paddingVertical: 12,
     gap: 10,

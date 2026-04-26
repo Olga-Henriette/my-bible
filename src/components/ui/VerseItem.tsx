@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { memo } from 'react';
 import { useSettings } from '@/services/SettingsContext';
 import { Verse } from '@/types/bible';
 
@@ -9,12 +10,7 @@ interface VerseItemProps {
   fontSize: number;
 }
 
-export default function VerseItem({
-  verse,
-  isBookmarked,
-  onLongPress,
-  fontSize,
-}: VerseItemProps) {
+function VerseItem({ verse, isBookmarked, onLongPress, fontSize }: VerseItemProps) {
   const { colors } = useSettings();
 
   return (
@@ -40,6 +36,15 @@ export default function VerseItem({
     </TouchableOpacity>
   );
 }
+
+// memo évite le re-rendu des versets non modifiés
+export default memo(VerseItem, (prev, next) => {
+  return (
+    prev.isBookmarked === next.isBookmarked &&
+    prev.fontSize === next.fontSize &&
+    prev.verse.verse === next.verse.verse
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

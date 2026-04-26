@@ -17,6 +17,7 @@ import BookmarkItem from '@/components/ui/BookmarkItem';
 import EmptyBookmarks from '@/components/ui/EmptyBookmarks';
 
 import { Bookmark } from '@/types/bible';
+import ScreenHeader from '@/components/ui/ScreenHeader';
 
 type FilterMode = 'all' | 'recent' | string; // nom de catégorie
 
@@ -88,17 +89,15 @@ export default function BookmarksScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
 
       {/* Header */}
-      <View style={[
-        styles.header,
-        { backgroundColor: colors.tabBarBackground, paddingTop: insets.top + 12 },
-      ]}>
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>🔖 Favoris</Text>
+      <ScreenHeader
+        title="Favoris"
+        paddingTop={insets.top}
+        rightElement={
           <View style={[styles.totalBadge, { backgroundColor: colors.primary }]}>
             <Text style={styles.totalText}>{total}</Text>
           </View>
-        </View>
-      </View>
+        }
+      />
 
       {/* Filtres */}
       {total > 0 && (
@@ -164,21 +163,6 @@ export default function BookmarksScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#F0D080',
-    fontFamily: 'Georgia',
-  },
   totalBadge: {
     paddingHorizontal: 10,
     paddingVertical: 3,
