@@ -6,11 +6,12 @@ import { Verse } from '@/types/bible';
 interface VerseItemProps {
   verse: Verse;
   isBookmarked: boolean;
+  hasNote: boolean;
   onLongPress: (verse: Verse) => void;
   fontSize: number;
 }
 
-function VerseItem({ verse, isBookmarked, onLongPress, fontSize }: VerseItemProps) {
+function VerseItem({ verse, isBookmarked, hasNote, onLongPress, fontSize }: VerseItemProps) {
   const { colors } = useSettings();
 
   return (
@@ -28,10 +29,12 @@ function VerseItem({ verse, isBookmarked, onLongPress, fontSize }: VerseItemProp
       <Text style={[styles.text, { color: colors.verseText, fontSize, lineHeight: fontSize * 1.7 }]}>
         {verse.text}
         {isBookmarked && (
-          <Text style={[styles.bookmarkTag, { color: colors.primary }]}>
-            {' '}🔖
-          </Text>
+          <Text style={[styles.bookmarkTag, { color: colors.primary }]}>{' '}🔖</Text>
         )}
+        {hasNote && (
+          <Text style={[styles.bookmarkTag, { color: (colors as any).gold ?? '#D4A853' }]}>{' '}✏️</Text>
+        )}
+        
       </Text>
     </TouchableOpacity>
   );

@@ -41,7 +41,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     await StorageService.settings.save(patch);
   };
 
-  const colors = Colors[settings.theme] ?? Colors.light;
+  const colors = settings.theme === 'custom' && settings.customColors
+    ? (settings.customColors as unknown as ThemeColors)
+    : (Colors[settings.theme as keyof typeof Colors] ?? Colors.light);
 
   return (
     <SettingsContext.Provider

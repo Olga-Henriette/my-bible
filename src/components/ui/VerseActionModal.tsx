@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useSettings } from '@/services/SettingsContext';
 import { Verse, BookmarkCategory } from '@/types/bible';
 import CategoryPickerModal from './CategoryPickerModal';
+import NoteModal from './NoteModal';
 
 interface VerseActionModalProps {
   visible: boolean;
@@ -17,6 +18,7 @@ interface VerseActionModalProps {
   isBookmarked: boolean;
   onToggleBookmark: (category?: string) => void;
   onClose: () => void;
+  onNote: () => void;
 }
 
 export default function VerseActionModal({
@@ -25,6 +27,7 @@ export default function VerseActionModal({
   isBookmarked,
   onToggleBookmark,
   onClose,
+  onNote,
 }: VerseActionModalProps) {
   const { colors } = useSettings();
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -93,6 +96,17 @@ export default function VerseActionModal({
               <Text style={styles.actionIcon}>📤</Text>
               <Text style={[styles.actionText, { color: colors.text }]}>
                 Partager ce verset
+              </Text>
+            </TouchableOpacity>
+
+            {/* Note */}
+            <TouchableOpacity
+              onPress={() => { onNote(); onClose(); }}
+              style={styles.action}
+            >
+              <Text style={styles.actionIcon}>✏️</Text>
+              <Text style={[styles.actionText, { color: colors.text }]}>
+                Ajouter / modifier une note
               </Text>
             </TouchableOpacity>
 

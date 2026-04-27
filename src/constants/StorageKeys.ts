@@ -8,4 +8,5 @@ export const STORAGE_KEYS = {
   NOTIFICATION:     '@bible:notification',    
   READING_PLAN:     '@bible:reading_plan',
   BOOKMARK_CATEGORIES: '@bible:bookmark_categories',
+  NOTES: '@bible:notes', 
 } as const;

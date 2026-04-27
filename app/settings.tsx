@@ -17,6 +17,7 @@ import NotificationService from '@/services/NotificationService';
 import { NotificationSettings } from '@/types/bible';
 
 import ScreenHeader from '@/components/ui/ScreenHeader';
+import ColorThemeEditor from '@/components/ui/ColorThemeEditor';
 
 const THEMES: { label: string; value: Theme; icon: string; desc: string }[] = [
   { label: 'Clair',  value: 'light', icon: '☀️', desc: 'Fond crème, texte brun' },
@@ -29,13 +30,14 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const meta = BibleService.getMetadata();
-  
+
 const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
   enabled: true,
   hour: 6,
   minute: 0,
 });
 const [notifPermission, setNotifPermission] = useState(false);
+const [showColorEditor, setShowColorEditor] = useState(false);
 
 useEffect(() => {
   NotificationService.getSettings().then(setNotifSettings);
@@ -197,6 +199,16 @@ const updateNotification = async (patch: Partial<NotificationSettings>) => {
           ))}
         </View>
 
+        <TouchableOpacity
+          onPress={() => setShowColorEditor(true)}
+          style={[styles.customThemeBtn, { borderColor: colors.primary }]}
+        >
+          <Text style={styles.customThemeIcon}>🎨</Text>
+          <Text style={[styles.customThemeText, { color: colors.primary }]}>
+            Créer un thème personnalisé
+          </Text>
+        </TouchableOpacity>
+
         {/* Section : Taille de police */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
           Taille de police
@@ -296,6 +308,10 @@ const updateNotification = async (patch: Partial<NotificationSettings>) => {
         </View>
 
       </ScrollView>
+      <ColorThemeEditor
+        visible={showColorEditor}
+        onClose={() => setShowColorEditor(false)}
+      />
     </View>
   );
 }
@@ -433,4 +449,17 @@ const styles = StyleSheet.create({
     minWidth: 60,
     textAlign: 'center',
   },
+  customThemeBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginHorizontal: 16,
+  marginTop: 10,
+  borderWidth: 1.5,
+  borderRadius: 12,
+  borderStyle: 'dashed',
+  padding: 14,
+  gap: 10,
+  },
+  customThemeIcon: { fontSize: 20 },
+  customThemeText: { fontSize: 15, fontWeight: '600' },
 });

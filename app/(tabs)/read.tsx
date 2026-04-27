@@ -24,6 +24,8 @@ import VerseActionModal from '@/components/ui/VerseActionModal';
 import DisplayOptionsModal from '@/components/ui/DisplayOptionsModal';
 
 import { Verse } from '@/types/bible';
+import NoteModal from '@/components/ui/NoteModal';
+import StorageService from '@/services/StorageService';
 
 export default function ReadScreen() {
   const { colors, settings, updateSettings } = useSettings();
@@ -60,6 +62,11 @@ export default function ReadScreen() {
   const flatListRef = useRef<FlatList>(null);
   const pinchBaseSize = useRef<number | null>(null);
   const isInternalChange = useRef(false);
+
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteVerse, setNoteVerse]         = useState<Verse | null>(null);
+  const [chapterNoteIds, setChapterNoteIds] = useState<Set<string>>(new Set());
+  const [versesWithNotes, setVersesWithNotes] = useState<Set<string>>(new Set());
 
   const panResponder = useRef(
     PanResponder.create({
@@ -133,6 +140,14 @@ export default function ReadScreen() {
   }, [params.bookNumber, params.chapter, params.verseNumber, params.key, params.timestamp]);
 
   useEffect(() => {
+    if (!currentChapter) return;
+    StorageService.notes.getAll().then(notes => {
+      const ids = new Set(notes.map(n => n.id));
+      setChapterNoteIds(ids);
+    });
+  }, [currentChapter]);
+
+  useEffect(() => {
     if (isLoading || !currentChapter?.verses || currentChapter.verses.length === 0) {
       setIsReadyToDisplay(false);
       return;
@@ -177,6 +192,11 @@ export default function ReadScreen() {
     setTargetVerse(null);
     await goToNext();
   }, [goToNext]);
+
+  const handleNote = useCallback(() => {
+    setNoteVerse(selectedVerse);
+    setShowNoteModal(true);
+  }, [selectedVerse]);
 
   if (isLoading && !currentChapter) {
     return (
@@ -249,24 +269,24 @@ export default function ReadScreen() {
             ref={flatListRef}
             data={currentChapter?.verses ?? []}
             keyExtractor={item => `${item.book}-${item.chapter}-${item.verse}`}
-            getItemLayout={(data, index) => (
-              { length: 100, offset: 100 * index, index }
-            )}
             initialNumToRender={15}
             maxToRenderPerBatch={10}
             windowSize={5}
             removeClippedSubviews={false}
             contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
             onScrollToIndexFailed={(info) => {
-              flatListRef.current?.scrollToOffset({ 
-                offset: info.averageItemLength * info.index, 
-                animated: false 
-              });
+              flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+              setTimeout(() => {
+                if (flatListRef.current) {
+                  flatListRef.current.scrollToIndex({ index: info.index, animated: false, viewPosition: 0 });
+                }
+              }, 100);
             }}
             renderItem={({ item }) => (
               <VerseItem
                 verse={item}
                 isBookmarked={isBookmarked(item.book, item.chapter, item.verse)}
+                hasNote={chapterNoteIds.has(`${item.book}-${item.chapter}-${item.verse}`)}
                 onLongPress={handleVersePress}
                 fontSize={settings.font_size}
               />
@@ -311,6 +331,12 @@ export default function ReadScreen() {
         }
         onToggleBookmark={handleToggleBookmark}
         onClose={() => setSelectedVerse(null)}
+        onNote={handleNote}
+      />
+      <NoteModal
+        visible={showNoteModal}
+        verse={noteVerse}
+        onClose={() => { setShowNoteModal(false); setNoteVerse(null); }}
       />
       <DisplayOptionsModal
         visible={showDisplayOptions}

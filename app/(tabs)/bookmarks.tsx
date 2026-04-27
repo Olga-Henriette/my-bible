@@ -19,6 +19,10 @@ import EmptyBookmarks from '@/components/ui/EmptyBookmarks';
 import { Bookmark } from '@/types/bible';
 import ScreenHeader from '@/components/ui/ScreenHeader';
 
+import { ActivityIndicator } from 'react-native';
+import ExportService from '@/services/ExportService';
+import StorageService from '@/services/StorageService';
+
 type FilterMode = 'all' | 'recent' | string; // nom de catégorie
 
 export default function BookmarksScreen() {
@@ -30,6 +34,8 @@ export default function BookmarksScreen() {
     useBookmarks();
 
   const [activeFilter, setActiveFilter] = useState<FilterMode>('all');
+
+  const [isExporting, setIsExporting] = useState(false);
 
   // Catégories disponibles 
   const categories = useMemo(() => {
@@ -77,6 +83,33 @@ export default function BookmarksScreen() {
     [removeBookmark]
   );
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await ExportService.exportBookmarks();
+    } catch (e: any) {
+      Alert.alert('Export', e.message ?? 'Une erreur est survenue.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const { added, skipped } = await ExportService.importBookmarks();
+      Alert.alert(
+        'Import réussi',
+        `${added} favori(s) ajouté(s).\n${skipped} doublon(s) ignoré(s).`
+      );
+      const updated = await StorageService.bookmarks.getAll();
+      await StorageService.bookmarks.getAll();
+    } catch (e: any) {
+      if (e.message !== 'Import annulé.') {
+        Alert.alert('Erreur', e.message ?? 'Import impossible.');
+      }
+    }
+  };
+
   // Filtres disponibles 
   const filters: { label: string; value: FilterMode }[] = [
     { label: 'Tous', value: 'all' },
@@ -93,8 +126,27 @@ export default function BookmarksScreen() {
         title="Favoris"
         paddingTop={insets.top}
         rightElement={
-          <View style={[styles.totalBadge, { backgroundColor: colors.primary }]}>
-            <Text style={styles.totalText}>{total}</Text>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={handleImport} style={styles.headerBtn}>
+              <Text style={[styles.headerBtnText, { color: colors.tabBarActive }]}>
+                📁
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleExport}
+              disabled={isExporting || total === 0}
+              style={styles.headerBtn}
+            >
+              {isExporting
+                ? <ActivityIndicator size="small" color={colors.tabBarActive} />
+                : <Text style={[styles.headerBtnText, { color: total === 0 ? colors.textMuted : colors.tabBarActive }]}>
+                    📦
+                  </Text>
+              }
+            </TouchableOpacity>
+            <View style={[styles.totalBadge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.totalText}>{total}</Text>
+            </View>
           </View>
         }
       />
@@ -163,6 +215,17 @@ export default function BookmarksScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  headerActions: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10,
+  },
+  headerBtn: {
+    padding: 4,
+  },
+  headerBtnText: {
+    fontSize: 20,
+  },
   totalBadge: {
     paddingHorizontal: 10,
     paddingVertical: 3,

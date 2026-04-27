@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/constants/StorageKeys';
 import { DEFAULT_LAST_POSITION, DEFAULT_SETTINGS } from '@/constants/Defaults';
-import { Bookmark, LastPosition, UserSettings } from '@/types/bible';
 import { DEFAULT_CATEGORIES } from '@/constants/DefaultCategories';
 import { BookmarkCategory } from '@/types/bible';
+import { Bookmark, LastPosition, UserSettings, VerseNote } from '@/types/bible';
 
 // Helper générique 
 
@@ -199,6 +199,61 @@ const CategoryService = {
   },
 };
 
+const NoteService = {
+  async getAll(): Promise<VerseNote[]> {
+    return getItem<VerseNote[]>(STORAGE_KEYS.NOTES, []);
+  },
+
+  async get(bookNumber: number, chapter: number, verse: number): Promise<VerseNote | null> {
+    const id  = `${bookNumber}-${chapter}-${verse}`;
+    const all = await NoteService.getAll();
+    return all.find(n => n.id === id) ?? null;
+  },
+
+  async save(
+    bookNumber: number,
+    chapter: number,
+    verse: number,
+    verseText: string,
+    bookName: string,
+    noteText: string
+  ): Promise<void> {
+    const id  = `${bookNumber}-${chapter}-${verse}`;
+    const all = await NoteService.getAll();
+    const existing = all.findIndex(n => n.id === id);
+
+    const note: VerseNote = {
+      id,
+      book_number: bookNumber,
+      book_name:   bookName,
+      chapter,
+      verse,
+      text:        verseText,
+      note:        noteText,
+      updated_at:  new Date().toISOString(),
+    };
+
+    if (existing !== -1) {
+      all[existing] = note;
+    } else {
+      all.unshift(note);
+    }
+
+    await setItem(STORAGE_KEYS.NOTES, all);
+  },
+
+  async delete(bookNumber: number, chapter: number, verse: number): Promise<void> {
+    const id  = `${bookNumber}-${chapter}-${verse}`;
+    const all = await NoteService.getAll();
+    await setItem(STORAGE_KEYS.NOTES, all.filter(n => n.id !== id));
+  },
+
+  async hasNote(bookNumber: number, chapter: number, verse: number): Promise<boolean> {
+    const note = await NoteService.get(bookNumber, chapter, verse);
+    return note !== null && note.note.trim().length > 0;
+  },
+};
+
 // Export central 
 
 const StorageService = {
@@ -208,6 +263,7 @@ const StorageService = {
   history: HistoryService,
   stats: ReadingStatsService,
   categories: CategoryService,
+  notes: NoteService,
 };
 
 
