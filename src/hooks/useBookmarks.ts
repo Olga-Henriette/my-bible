@@ -50,7 +50,7 @@ export function useBookmarks() {
       if (exists) {
         await removeBookmark(id);
       } else {
-        await addBookmark(verse, category);
+        await addBookmark(verse, category ?? 'general');
       }
     },
     [bookmarks, addBookmark, removeBookmark]

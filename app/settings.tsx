@@ -12,6 +12,9 @@ import { useSettings } from '@/services/SettingsContext';
 import { Colors, Theme } from '@/constants/Colors';
 import { ReadingFontSizes } from '@/constants/Typography';
 import BibleService from '@/services/BibleService';
+import { useState, useEffect } from 'react';
+import NotificationService from '@/services/NotificationService';
+import { NotificationSettings } from '@/types/bible';
 
 import ScreenHeader from '@/components/ui/ScreenHeader';
 
@@ -26,6 +29,29 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const meta = BibleService.getMetadata();
+  
+const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
+  enabled: true,
+  hour: 6,
+  minute: 0,
+});
+const [notifPermission, setNotifPermission] = useState(false);
+
+useEffect(() => {
+  NotificationService.getSettings().then(setNotifSettings);
+  NotificationService.hasPermission().then(setNotifPermission);
+}, []);
+
+const updateNotification = async (patch: Partial<NotificationSettings>) => {
+  const updated = { ...notifSettings, ...patch };
+  setNotifSettings(updated);
+  await NotificationService.saveSettings(updated);
+  await NotificationService.schedule(updated);
+  if (!notifPermission) {
+    const granted = await NotificationService.requestPermissions();
+    setNotifPermission(granted);
+  }
+};
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -41,6 +67,96 @@ export default function SettingsScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
+
+        {/* Section : Notifications */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+          Notifications
+        </Text>
+
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
+          {/* Activer / Désactiver */}
+          <View style={styles.notifRow}>
+            <View style={styles.notifInfo}>
+              <Text style={[styles.notifLabel, { color: colors.text }]}>
+                Verset du jour
+              </Text>
+              <Text style={[styles.notifDesc, { color: colors.textMuted }]}>
+                {notifPermission
+                  ? 'Notification quotidienne activée'
+                  : 'Permission requise'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => updateNotification({ enabled: !notifSettings.enabled })}
+              style={[
+                styles.toggle,
+                { backgroundColor: notifSettings.enabled ? colors.primary : colors.separator },
+              ]}
+            >
+              <View style={[
+                styles.toggleThumb,
+                { transform: [{ translateX: notifSettings.enabled ? 20 : 2 }] },
+              ]} />
+            </TouchableOpacity>
+          </View>
+
+          {notifSettings.enabled && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.separator }]} />
+
+              {/* Heure */}
+              <View style={styles.notifRow}>
+                <Text style={[styles.notifLabel, { color: colors.text }]}>
+                  Heure d'envoi
+                </Text>
+                <View style={styles.timeRow}>
+
+                  {/* Heure − / + */}
+                  <TouchableOpacity
+                    onPress={() => updateNotification({ hour: Math.max(0, notifSettings.hour - 1) })}
+                    style={[styles.timeBtn, { borderColor: colors.border }]}
+                  >
+                    <Text style={[styles.timeBtnText, { color: colors.text }]}>−</Text>
+                  </TouchableOpacity>
+
+                  <Text style={[styles.timeDisplay, { color: colors.text }]}>
+                    {String(notifSettings.hour).padStart(2, '0')}:
+                    {String(notifSettings.minute).padStart(2, '0')}
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={() => updateNotification({ hour: Math.min(23, notifSettings.hour + 1) })}
+                    style={[styles.timeBtn, { borderColor: colors.border }]}
+                  >
+                    <Text style={[styles.timeBtnText, { color: colors.text }]}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Minutes */}
+              <View style={[styles.notifRow, { paddingTop: 0 }]}>
+                <Text style={[styles.notifDesc, { color: colors.textMuted }]}>
+                  Ajuster les minutes
+                </Text>
+                <View style={styles.timeRow}>
+                  <TouchableOpacity
+                    onPress={() => updateNotification({ minute: Math.max(0, notifSettings.minute - 5) })}
+                    style={[styles.timeBtn, { borderColor: colors.border }]}
+                  >
+                    <Text style={[styles.timeBtnText, { color: colors.text }]}>−5</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => updateNotification({ minute: Math.min(55, notifSettings.minute + 5) })}
+                    style={[styles.timeBtn, { borderColor: colors.border }]}
+                  >
+                    <Text style={[styles.timeBtnText, { color: colors.text }]}>+5</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
 
         {/* Section : Thème */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -277,4 +393,44 @@ const styles = StyleSheet.create({
   aboutLabel: { fontSize: 14 },
   aboutValue: { fontSize: 14, fontWeight: '600' },
   divider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    gap: 12,
+  },
+  notifInfo: { flex: 1 },
+  notifLabel: { fontSize: 15, fontWeight: '600' },
+  notifDesc:  { fontSize: 12, marginTop: 2 },
+  toggle: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#fff',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  timeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  timeBtnText: { fontSize: 14, fontWeight: '700' },
+  timeDisplay: {
+    fontSize: 18,
+    fontWeight: '700',
+    minWidth: 60,
+    textAlign: 'center',
+  },
 });

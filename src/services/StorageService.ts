@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/constants/StorageKeys';
 import { DEFAULT_LAST_POSITION, DEFAULT_SETTINGS } from '@/constants/Defaults';
 import { Bookmark, LastPosition, UserSettings } from '@/types/bible';
+import { DEFAULT_CATEGORIES } from '@/constants/DefaultCategories';
+import { BookmarkCategory } from '@/types/bible';
 
 // Helper générique 
 
@@ -161,6 +163,41 @@ const ReadingStatsService = {
   },
 };
 
+const CategoryService = {
+  async getAll(): Promise<BookmarkCategory[]> {
+    const custom = await getItem<BookmarkCategory[]>(
+      STORAGE_KEYS.BOOKMARK_CATEGORIES,
+      []
+    );
+    return [...DEFAULT_CATEGORIES, ...custom];
+  },
+
+  async addCustom(label: string, icon: string): Promise<BookmarkCategory> {
+    const custom = await getItem<BookmarkCategory[]>(
+      STORAGE_KEYS.BOOKMARK_CATEGORIES,
+      []
+    );
+    const newCat: BookmarkCategory = {
+      id: `custom_${Date.now()}`,
+      label,
+      icon,
+      isCustom: true,
+    };
+    await setItem(STORAGE_KEYS.BOOKMARK_CATEGORIES, [...custom, newCat]);
+    return newCat;
+  },
+
+  async removeCustom(id: string): Promise<void> {
+    const custom = await getItem<BookmarkCategory[]>(
+      STORAGE_KEYS.BOOKMARK_CATEGORIES,
+      []
+    );
+    await setItem(
+      STORAGE_KEYS.BOOKMARK_CATEGORIES,
+      custom.filter(c => c.id !== id)
+    );
+  },
+};
 
 // Export central 
 
@@ -170,6 +207,7 @@ const StorageService = {
   settings: SettingsService,
   history: HistoryService,
   stats: ReadingStatsService,
+  categories: CategoryService,
 };
 
 

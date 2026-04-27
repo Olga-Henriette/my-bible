@@ -119,7 +119,7 @@ export default function ReadScreen() {
     const c = params.chapter ? parseInt(params.chapter) : null;
     const v = params.verseNumber ? parseInt(params.verseNumber) : null;
 
-    setIsReadyToDisplay(false); // On cache la liste le temps du chargement/calcul
+    setIsReadyToDisplay(false);
 
     if (b !== null && c !== null) {
       isInternalChange.current = false;
@@ -132,38 +132,38 @@ export default function ReadScreen() {
     }
   }, [params.bookNumber, params.chapter, params.verseNumber, params.key, params.timestamp]);
 
-  // EFFET B : Exécution du Scroll une fois chargé
   useEffect(() => {
-    // On attend que le chargement soit fini et que les versets soient là
-    if (isLoading || !currentChapter?.verses || currentChapter.verses.length === 0) return;
+    if (isLoading || !currentChapter?.verses || currentChapter.verses.length === 0) {
+      setIsReadyToDisplay(false);
+      return;
+    }
 
     const timer = setTimeout(() => {
       if (targetVerse !== null) {
         const index = currentChapter.verses.findIndex(v => v.verse === targetVerse);
-        if (index !== -1) {
-          flatListRef.current?.scrollToIndex({
+        if (index !== -1 && flatListRef.current) {
+          flatListRef.current.scrollToIndex({
             index,
             animated: false,
             viewPosition: 0,
           });
         }
-      } else if (isInternalChange.current) {
-        flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      } else if (isInternalChange.current && flatListRef.current) {
+        flatListRef.current.scrollToOffset({ offset: 0, animated: false });
       }
       
-      // On n'autorise l'affichage qu'APRÈS avoir tenté le scroll
       setIsReadyToDisplay(true);
-    }, 100); 
+    }, 200);
 
     return () => clearTimeout(timer);
-  }, [currentChapter, isLoading, targetVerse]);
+  }, [isLoading, currentChapter?.number, currentBook?.number, targetVerse]);
 
   const handleVersePress = useCallback((verse: Verse) => {
     setSelectedVerse(verse);
   }, []);
 
-  const handleToggleBookmark = useCallback(async () => {
-    if (selectedVerse) await toggleBookmark(selectedVerse);
+  const handleToggleBookmark = useCallback(async (category?: string) => {
+    if (selectedVerse) await toggleBookmark(selectedVerse, category);
   }, [selectedVerse, toggleBookmark]);
 
   const handlePrevious = useCallback(async () => {
@@ -247,20 +247,21 @@ export default function ReadScreen() {
       <View style={styles.listContainer} {...panResponder.panHandlers}>
         <FlatList
             ref={flatListRef}
-            data={currentChapter.verses}
+            data={currentChapter?.verses ?? []}
             keyExtractor={item => `${item.book}-${item.chapter}-${item.verse}`}
-            initialNumToRender={50}
-            maxToRenderPerBatch={50}
-            windowSize={10}
+            getItemLayout={(data, index) => (
+              { length: 100, offset: 100 * index, index }
+            )}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={5}
             removeClippedSubviews={false}
-            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 600 }]}
+            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
             onScrollToIndexFailed={(info) => {
-              flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
-              setTimeout(() => {
-                if (flatListRef.current) {
-                  flatListRef.current.scrollToIndex({ index: info.index, animated: false, viewPosition: 0 });
-                }
-              }, 100);
+              flatListRef.current?.scrollToOffset({ 
+                offset: info.averageItemLength * info.index, 
+                animated: false 
+              });
             }}
             renderItem={({ item }) => (
               <VerseItem

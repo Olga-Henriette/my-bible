@@ -20,7 +20,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F5F0E8"
       },
-      "package": "com.mabible.app"
+        "predictiveBackGestureEnabled": false,
+        "package": "com.mabible.app",
+        "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED"]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -29,7 +31,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#5C3317",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

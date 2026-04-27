@@ -5,4 +5,7 @@ export const STORAGE_KEYS = {
   SETTINGS: '@bible:settings',
   READING_DAYS:   '@bible:reading_days',    
   CHAPTERS_READ:  '@bible:chapters_read', 
+  NOTIFICATION:     '@bible:notification',    
+  READING_PLAN:     '@bible:reading_plan',
+  BOOKMARK_CATEGORIES: '@bible:bookmark_categories',
 } as const;

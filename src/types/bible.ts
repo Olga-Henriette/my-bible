@@ -40,6 +40,12 @@ export interface Bookmark {
   category: string;
 }
 
+export interface BookmarkCategory {
+  id: string;
+  label: string;
+  icon: string;
+  isCustom: boolean;
+}
 export interface LastPosition {
   book_number: number;
   book_name: string;
@@ -55,4 +61,29 @@ export type Testament = 'all' | 'ancien' | 'nouveau';
 
 export interface SearchResult extends Verse {
   highlighted?: boolean;
+}
+
+export interface NotificationSettings {
+  enabled: boolean;
+  hour: number;    // 0-23
+  minute: number;  // 0-59
+}
+
+export type ReadingPlanId = 'bible_1_year' | 'psalms_30_days' | 'nt_90_days' | 'custom';
+
+export interface ReadingPlan {
+  id: ReadingPlanId;
+  title: string;
+  description: string;
+  totalDays: number;
+  startDate: string;        
+  completedDays: number[];  
+}
+
+export interface ReadingPlanDay {
+  day: number;
+  bookNumber: number;
+  bookName: string;
+  chapter: number;
+  label: string;
 }

@@ -121,6 +121,27 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* ── Plans de lecture ── */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+          Plan de lecture
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/reading-plan')}
+          activeOpacity={0.85}
+          style={[styles.planCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <Text style={styles.planIcon}>📅</Text>
+          <View style={styles.planInfo}>
+            <Text style={[styles.planTitle, { color: colors.text }]}>
+              Plans de lecture
+            </Text>
+            <Text style={[styles.planDesc, { color: colors.textMuted }]}>
+              Bible en 1 an · NT en 90 jours · Psaumes
+            </Text>
+          </View>
+          <Text style={[styles.planArrow, { color: colors.primary }]}>→</Text>
+        </TouchableOpacity>
+
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Mes statistiques</Text>
         <View style={styles.statsRow}>
           <StatCard icon="🔖" value={totalBookmarks} label="Favoris" />
@@ -146,4 +167,18 @@ const styles = StyleSheet.create({
   testamentTitle: { fontSize: 15, fontWeight: '700' },
   testamentSub: { fontSize: 12 },
   statsRow: { flexDirection: 'row', marginHorizontal: 16, gap: 10 },
+  planCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  planIcon:  { fontSize: 26 },
+  planInfo:  { flex: 1 },
+  planTitle: { fontSize: 15, fontWeight: '700' },
+  planDesc:  { fontSize: 12, marginTop: 2 },
+  planArrow: { fontSize: 20, fontWeight: '700' },
 });
