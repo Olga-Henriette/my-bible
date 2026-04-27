@@ -5,30 +5,35 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useSettings } from '@/services/SettingsContext';
 import { useBible } from '@/hooks/useBible';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { useLastPosition } from '@/hooks/useLastPosition';
+import { ReadingFontSizes } from '@/constants/Typography';
 
 import VerseItem from '@/components/ui/VerseItem';
 import BookSelector from '@/components/ui/BookSelector';
 import ChapterSelector from '@/components/ui/ChapterSelector';
 import VerseActionModal from '@/components/ui/VerseActionModal';
+import DisplayOptionsModal from '@/components/ui/DisplayOptionsModal';
 
 import { Verse } from '@/types/bible';
 
 export default function ReadScreen() {
-  const { colors, settings } = useSettings();
+  const { colors, settings, updateSettings } = useSettings();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ 
-    bookNumber?: string; 
-    chapter?: string; 
-    verseNumber?: string
+  const params = useLocalSearchParams<{
+    bookNumber?: string;
+    chapter?: string;
+    verseNumber?: string;
+    timestamp?: string;
+    key?: string;
   }>();
   const { lastPosition } = useLastPosition();
 
@@ -47,48 +52,111 @@ export default function ReadScreen() {
 
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
+  const [showDisplayOptions, setShowDisplayOptions] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<Verse | null>(null);
   const [targetVerse, setTargetVerse] = useState<number | null>(null);
+  const [isReadyToDisplay, setIsReadyToDisplay] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
+  const pinchBaseSize = useRef<number | null>(null);
+  const isInternalChange = useRef(false);
 
-  // Charge le chapitre initial
-  useEffect(() => {
-    const bookNum = params.bookNumber
-      ? parseInt(params.bookNumber)
-      : lastPosition.book_number;
-    const chapterNum = params.chapter
-      ? parseInt(params.chapter)
-      : lastPosition.chapter;
-    const verseNum = params.verseNumber
-      ? parseInt(params.verseNumber)
-      : null;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (_, gs) => gs.numberActiveTouches === 2,
+      onMoveShouldSetPanResponder: (_, gs) => gs.numberActiveTouches === 2,
+      
+      onPanResponderTerminationRequest: () => true,
 
-    setTargetVerse(verseNum); 
-    loadChapter(bookNum, chapterNum);
-  }, [params.bookNumber, params.chapter, params.verseNumber]);
+      onPanResponderGrant: () => { 
+        pinchBaseSize.current = null; 
+      },
+      onPanResponderMove: (e, gs) => {
+        if (gs.numberActiveTouches !== 2) return;
+        
+        const touches = e.nativeEvent.touches;
+        if (!touches || touches.length < 2) return;
 
-  // Remonte en haut à chaque changement de chapitre
-  useEffect(() => {
+        const dx = touches[0].pageX - touches[1].pageX;
+        const dy = touches[0].pageY - touches[1].pageY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (pinchBaseSize.current === null) {
+          pinchBaseSize.current = distance;
+          return;
+        }
+
+        const delta = distance - pinchBaseSize.current;
+        if (Math.abs(delta) > 60) {
+          pinchBaseSize.current = distance;
+          const currentIndex = ReadingFontSizes.indexOf(settings.font_size);
+          
+          if (delta > 0 && currentIndex < ReadingFontSizes.length - 1) {
+            updateSettings({ font_size: ReadingFontSizes[currentIndex + 1] });
+          } else if (delta < 0 && currentIndex > 0) {
+            updateSettings({ font_size: ReadingFontSizes[currentIndex - 1] });
+          }
+        }
+      },
+    })
+  ).current;
+
+  const triggerScroll = useCallback((verseNum: number) => {
     if (!currentChapter) return;
-
-    if (targetVerse) {
-      // Scroll vers le verset exact
-      const index = currentChapter.verses.findIndex(v => v.verse === targetVerse);
-      if (index !== -1) {
-        setTimeout(() => {
-          flatListRef.current?.scrollToIndex({
-            index,
-            animated: true,
-            viewPosition: 0.3, // le verset apparaît au tiers supérieur de l'écran
-          });
-        }, 300); // légère attente pour que la FlatList soit prête
-      }
-    } else {
-      // Pas de verset cible → remonte en haut
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    
+    const index = currentChapter.verses.findIndex(v => v.verse === verseNum);
+    if (index !== -1) {
+      flatListRef.current?.scrollToIndex({
+        index,
+        animated: false,
+        viewPosition: 0,
+      });
     }
   }, [currentChapter]);
+
+  useEffect(() => {
+    const b = params.bookNumber ? parseInt(params.bookNumber) : null;
+    const c = params.chapter ? parseInt(params.chapter) : null;
+    const v = params.verseNumber ? parseInt(params.verseNumber) : null;
+
+    setIsReadyToDisplay(false); // On cache la liste le temps du chargement/calcul
+
+    if (b !== null && c !== null) {
+      isInternalChange.current = false;
+      setTargetVerse(v); 
+      loadChapter(b, c);
+    } else {
+      isInternalChange.current = true;
+      setTargetVerse(null); 
+      loadChapter(lastPosition.book_number, lastPosition.chapter);
+    }
+  }, [params.bookNumber, params.chapter, params.verseNumber, params.key, params.timestamp]);
+
+  // EFFET B : Exécution du Scroll une fois chargé
+  useEffect(() => {
+    // On attend que le chargement soit fini et que les versets soient là
+    if (isLoading || !currentChapter?.verses || currentChapter.verses.length === 0) return;
+
+    const timer = setTimeout(() => {
+      if (targetVerse !== null) {
+        const index = currentChapter.verses.findIndex(v => v.verse === targetVerse);
+        if (index !== -1) {
+          flatListRef.current?.scrollToIndex({
+            index,
+            animated: false,
+            viewPosition: 0,
+          });
+        }
+      } else if (isInternalChange.current) {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      }
+      
+      // On n'autorise l'affichage qu'APRÈS avoir tenté le scroll
+      setIsReadyToDisplay(true);
+    }, 100); 
+
+    return () => clearTimeout(timer);
+  }, [currentChapter, isLoading, targetVerse]);
 
   const handleVersePress = useCallback((verse: Verse) => {
     setSelectedVerse(verse);
@@ -98,9 +166,19 @@ export default function ReadScreen() {
     if (selectedVerse) await toggleBookmark(selectedVerse);
   }, [selectedVerse, toggleBookmark]);
 
-  // Rendu 
+  const handlePrevious = useCallback(async () => {
+    isInternalChange.current = true;
+    setTargetVerse(null);
+    await goToPrevious();
+  }, [goToPrevious]);
 
-  if (isLoading || !currentBook || !currentChapter) {
+  const handleNext = useCallback(async () => {
+    isInternalChange.current = true;
+    setTargetVerse(null);
+    await goToNext();
+  }, [goToNext]);
+
+  if (isLoading && !currentChapter) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -108,81 +186,39 @@ export default function ReadScreen() {
     );
   }
 
+  if (!currentBook || !currentChapter) return null;
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+            <ActivityIndicator color={colors.primary} />
+        </View>
+      )}
 
-      {/* Barre de navigation */}
       <View style={[
         styles.navbar,
         { backgroundColor: colors.tabBarBackground, paddingTop: insets.top + 8 },
       ]}>
-        {/* Bouton Livre */}
-        <TouchableOpacity
-          onPress={() => setShowBookSelector(true)}
-          style={styles.navBtn}
-        >
+        <TouchableOpacity onPress={() => setShowBookSelector(true)} style={styles.navBtn}>
           <Text style={styles.navBookName} numberOfLines={1}>
             {currentBook.name}
           </Text>
         </TouchableOpacity>
-
-        {/* Bouton Chapitre */}
         <TouchableOpacity
           onPress={() => setShowChapterSelector(true)}
           style={[styles.chapterPill, { backgroundColor: colors.primary }]}
         >
-          <Text style={styles.chapterPillText}>
-            Ch. {currentChapter.number}
-          </Text>
+          <Text style={styles.chapterPillText}>Ch. {currentChapter.number}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Liste des versets */}
-      <FlatList
-        ref={flatListRef}
-        data={currentChapter.verses}
-        keyExtractor={item => `${item.book}-${item.chapter}-${item.verse}`}
-        contentContainerStyle={[
-          styles.list,
-          { paddingBottom: insets.bottom + 90 },
-        ]}
-        onScrollToIndexFailed={info => {
-          // Attend que la liste soit chargée puis réessaie
-          setTimeout(() => {
-            flatListRef.current?.scrollToIndex({
-              index: info.index,
-              animated: true,
-              viewPosition: 0.3,
-            });
-          }, 500);
-        }}
-        renderItem={({ item }) => (
-          <VerseItem
-            verse={item}
-            isBookmarked={isBookmarked(item.book, item.chapter, item.verse)}
-            onLongPress={handleVersePress}
-            fontSize={settings.font_size}
-          />
-        )}
-        ListHeaderComponent={
-          <Text style={[styles.chapterHeader, { color: colors.textSecondary }]}>
-            {currentBook.name} — Chapitre {currentChapter.number}
-          </Text>
-        }
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Navigation Précédent / Suivant */}
       <View style={[
-        styles.navFooter,
-        {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.separator,
-          paddingBottom: insets.bottom + 8,
-        },
+        styles.navTop,
+        { backgroundColor: colors.surface, borderBottomColor: colors.separator },
       ]}>
         <TouchableOpacity
-          onPress={goToPrevious}
+          onPress={handlePrevious}
           disabled={!hasPrevious()}
           style={[styles.navArrow, !hasPrevious() && styles.disabled]}
         >
@@ -198,7 +234,7 @@ export default function ReadScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={goToNext}
+          onPress={handleNext}
           disabled={!hasNext()}
           style={[styles.navArrow, !hasNext() && styles.disabled]}
         >
@@ -208,22 +244,62 @@ export default function ReadScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Modals */}
+      <View style={styles.listContainer} {...panResponder.panHandlers}>
+        <FlatList
+            ref={flatListRef}
+            data={currentChapter.verses}
+            keyExtractor={item => `${item.book}-${item.chapter}-${item.verse}`}
+            initialNumToRender={50}
+            maxToRenderPerBatch={50}
+            windowSize={10}
+            removeClippedSubviews={false}
+            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 600 }]}
+            onScrollToIndexFailed={(info) => {
+              flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+              setTimeout(() => {
+                if (flatListRef.current) {
+                  flatListRef.current.scrollToIndex({ index: info.index, animated: false, viewPosition: 0 });
+                }
+              }, 100);
+            }}
+            renderItem={({ item }) => (
+              <VerseItem
+                verse={item}
+                isBookmarked={isBookmarked(item.book, item.chapter, item.verse)}
+                onLongPress={handleVersePress}
+                fontSize={settings.font_size}
+              />
+            )}
+            ListHeaderComponent={
+              <Text style={[styles.chapterHeader, { color: colors.textSecondary }]}>
+                {currentBook.name} — Chapitre {currentChapter.number}
+              </Text>
+            }
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+
+      <TouchableOpacity
+        onPress={() => setShowDisplayOptions(true)}
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.fabIcon}>⚙</Text>
+      </TouchableOpacity>
+
       <BookSelector
         visible={showBookSelector}
         currentBookNumber={currentBook.number}
-        onSelect={num => loadChapter(num, 1)}
+        onSelect={num => { setTargetVerse(null); loadChapter(num, 1); }}
         onClose={() => setShowBookSelector(false)}
       />
-
       <ChapterSelector
         visible={showChapterSelector}
         bookNumber={currentBook.number}
         currentChapter={currentChapter.number}
-        onSelect={ch => loadChapter(currentBook.number, ch)}
+        onSelect={ch => { setTargetVerse(null); loadChapter(currentBook.number, ch); }}
         onClose={() => setShowChapterSelector(false)}
       />
-
       <VerseActionModal
         visible={selectedVerse !== null}
         verse={selectedVerse}
@@ -235,13 +311,25 @@ export default function ReadScreen() {
         onToggleBookmark={handleToggleBookmark}
         onClose={() => setSelectedVerse(null)}
       />
+      <DisplayOptionsModal
+        visible={showDisplayOptions}
+        onClose={() => setShowDisplayOptions(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  root:           { flex: 1 },
+  centered:       { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  listContainer:  { flex: 1 },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
   navbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -250,12 +338,11 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     gap: 12,
   },
-  navBtn: { flex: 1 },
+  navBtn:       { flex: 1 },
   navBookName: {
     color: '#F0D080',
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: 'Georgia',
   },
   chapterPill: {
     paddingHorizontal: 16,
@@ -267,6 +354,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  navTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  navArrow:     { paddingVertical: 4 },
+  navArrowText: { fontSize: 14, fontWeight: '600' },
+  navCenter:    { fontSize: 13 },
+  disabled:     { opacity: 0.4 },
   chapterHeader: {
     fontSize: 13,
     fontWeight: '600',
@@ -275,23 +374,17 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     textTransform: 'uppercase',
   },
-  list: {
-    paddingTop: 4,
-  },
-  navFooter: {
+  list: { paddingTop: 4 },
+  fab: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    bottom: 24,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    elevation: 6,
   },
-  navArrow: { paddingVertical: 8 },
-  navArrowText: { fontSize: 15, fontWeight: '600' },
-  navCenter: { fontSize: 13 },
-  disabled: { opacity: 0.4 },
+  fabIcon: { fontSize: 22, color: '#fff' },
 });

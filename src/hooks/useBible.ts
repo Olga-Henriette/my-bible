@@ -1,5 +1,3 @@
-// src/hooks/useBible.ts
-
 import { useState, useCallback } from 'react';
 import BibleService from '@/services/BibleService';
 import StorageService from '@/services/StorageService';
@@ -29,6 +27,8 @@ export function useBible() {
           };
           await StorageService.position.save(position);
           await StorageService.history.addEntry(position);
+          await StorageService.stats.recordDay();
+          await StorageService.stats.markChapterRead(bookNumber, chapterNumber);
         }
       } finally {
         setIsLoading(false);

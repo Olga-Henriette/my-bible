@@ -37,7 +37,6 @@ const BookmarkService = {
       id: `${bookmark.book_number}-${bookmark.chapter}-${bookmark.verse}`,
       added_at: new Date().toISOString(),
     };
-    // Évite les doublons
     const filtered = all.filter(b => b.id !== newBookmark.id);
     await setItem(STORAGE_KEYS.BOOKMARKS, [newBookmark, ...filtered]);
   },
@@ -126,6 +125,43 @@ const HistoryService = {
   },
 };
 
+const ReadingStatsService = {
+  // Enregistre la date d'aujourd'hui comme jour de lecture
+  async recordDay(): Promise<void> {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const days = await getItem<string[]>(STORAGE_KEYS.READING_DAYS, []);
+    if (!days.includes(today)) {
+      await setItem(STORAGE_KEYS.READING_DAYS, [today, ...days]);
+    }
+  },
+
+  async getTotalDays(): Promise<number> {
+    const days = await getItem<string[]>(STORAGE_KEYS.READING_DAYS, []);
+    return days.length;
+  },
+
+  // Marque un chapitre comme lu (clé unique livre-chapitre)
+  async markChapterRead(bookNumber: number, chapter: number): Promise<void> {
+    const key = `${bookNumber}-${chapter}`;
+    const read = await getItem<string[]>(STORAGE_KEYS.CHAPTERS_READ, []);
+    if (!read.includes(key)) {
+      await setItem(STORAGE_KEYS.CHAPTERS_READ, [...read, key]);
+    }
+  },
+
+  async getChaptersRead(): Promise<number> {
+    const read = await getItem<string[]>(STORAGE_KEYS.CHAPTERS_READ, []);
+    return read.length;
+  },
+
+  // Progression globale sur 1189 chapitres (total Bible)
+  async getProgressPercent(): Promise<number> {
+    const count = await ReadingStatsService.getChaptersRead();
+    return Math.round((count / 1189) * 100);
+  },
+};
+
+
 // Export central 
 
 const StorageService = {
@@ -133,6 +169,8 @@ const StorageService = {
   position: PositionService,
   settings: SettingsService,
   history: HistoryService,
+  stats: ReadingStatsService,
 };
+
 
 export default StorageService;

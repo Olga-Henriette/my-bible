@@ -1,31 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
 import StorageService from '@/services/StorageService';
 import { Bookmark, Verse } from '@/types/bible';
+import { useIsFocused } from '@react-navigation/native';
 
 export function useBookmarks() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isFocused = useIsFocused();
 
-  // Charge les favoris au montage
-  useEffect(() => {
-    StorageService.bookmarks.getAll().then(data => {
-      setBookmarks(data);
-      setIsLoading(false);
-    });
+  const loadBookmarks = useCallback(async () => {
+    const data = await StorageService.bookmarks.getAll();
+    setBookmarks(data);
   }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      loadBookmarks();
+    }
+  }, [isFocused, loadBookmarks]);
 
   const addBookmark = useCallback(
     async (verse: Verse, category: string = 'général') => {
-      await StorageService.bookmarks.add({
+      const newBookmark = {
         book_number: verse.book,
         book_name: verse.book_name,
         chapter: verse.chapter,
         verse: verse.verse,
         text: verse.text,
         category,
-      });
-      const updated = await StorageService.bookmarks.getAll();
-      setBookmarks(updated);
+      };
+      
+      await StorageService.bookmarks.add(newBookmark);
+      
+      const data = await StorageService.bookmarks.getAll();
+      setBookmarks([...data]); 
     },
     []
   );

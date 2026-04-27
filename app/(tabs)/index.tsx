@@ -18,31 +18,36 @@ import StorageService from '@/services/StorageService';
 
 import VerseCard from '@/components/ui/VerseCard';
 import StatCard from '@/components/ui/StatCard';
-
 import { Verse } from '@/types/bible';
 import ScreenHeader from '@/components/ui/ScreenHeader';
 
 export default function HomeScreen() {
-  const { colors } = useSettings();
+  const { colors, settings } = useSettings();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { lastPosition } = useLastPosition();
   const { total: totalBookmarks } = useBookmarks();
 
   const [verseOfDay, setVerseOfDay] = useState<Verse | null>(null);
-  const [historyCount, setHistoryCount] = useState(0);
+  const [readingDays, setReadingDays] = useState(0);
+  const [progressPct, setProgressPct] = useState(0);
 
   useEffect(() => {
-    setVerseOfDay(BibleService.getVerseOfTheDay());
-    StorageService.history.get().then(h => setHistoryCount(h.length));
+    const vOD = BibleService.getVerseOfTheDay();
+    setVerseOfDay(vOD);
+    
+    StorageService.stats.getTotalDays().then(setReadingDays);
+    StorageService.stats.getProgressPercent().then(setProgressPct);
   }, []);
 
-  const goToRead = (bookNumber?: number, chapter?: number) => {
+  const goToRead = (bookNumber?: number, chapter?: number, verseNumber?: number) => {
     router.push({
       pathname: '/(tabs)/read',
       params: {
-        bookNumber: bookNumber ?? lastPosition.book_number,
-        chapter: chapter ?? lastPosition.chapter,
+        bookNumber: (bookNumber ?? lastPosition.book_number).toString(),
+        chapter: (chapter ?? lastPosition.chapter).toString(),
+        verseNumber: verseNumber ? verseNumber.toString() : "",
+        key: Date.now().toString(), 
       },
     });
   };
@@ -55,16 +60,15 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.tabBarBackground} />
+      <StatusBar barStyle={settings.theme === 'dark' ? 'light-content' : 'dark-content'} />
 
-      {/* Header */}
       <ScreenHeader
         title="📖 Ma Bible"
         subtitle={today}
         paddingTop={insets.top}
         rightElement={
           <TouchableOpacity onPress={() => router.push('/settings')}>
-            <Text style={{ fontSize: 24 }}>⚙️</Text>
+             <Text style={{ fontSize: 24 }}>⚙️</Text>
           </TouchableOpacity>
         }
       />
@@ -73,24 +77,15 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-
-        {/* Verset du jour */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Verset du jour
-        </Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Verset du jour</Text>
         {verseOfDay && (
           <VerseCard
             verse={verseOfDay}
-            onPress={() =>
-              goToRead(verseOfDay.book, verseOfDay.chapter)
-            }
+            onPress={() => goToRead(verseOfDay.book, verseOfDay.chapter, verseOfDay.verse)}
           />
         )}
 
-        {/* Reprendre la lecture */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Continuer la lecture
-        </Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Continuer la lecture</Text>
         <TouchableOpacity
           onPress={() => goToRead()}
           activeOpacity={0.85}
@@ -105,140 +100,50 @@ export default function HomeScreen() {
           <Text style={styles.resumeArrow}>→</Text>
         </TouchableOpacity>
 
-        {/* Accès rapide Testaments */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Accès rapide
-        </Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Accès rapide</Text>
         <View style={styles.testamentRow}>
           <TouchableOpacity
             onPress={() => goToRead(1, 1)}
-            activeOpacity={0.85}
             style={[styles.testamentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
           >
             <Text style={styles.testamentIcon}>📜</Text>
             <Text style={[styles.testamentTitle, { color: colors.text }]}>Ancien</Text>
             <Text style={[styles.testamentSub, { color: colors.textMuted }]}>Testament</Text>
-            <Text style={[styles.testamentCount, { color: colors.textSecondary }]}>39 livres</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => goToRead(40, 1)}
-            activeOpacity={0.85}
             style={[styles.testamentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
           >
             <Text style={styles.testamentIcon}>✝️</Text>
             <Text style={[styles.testamentTitle, { color: colors.text }]}>Nouveau</Text>
             <Text style={[styles.testamentSub, { color: colors.textMuted }]}>Testament</Text>
-            <Text style={[styles.testamentCount, { color: colors.textSecondary }]}>27 livres</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Statistiques ── */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Mes statistiques
-        </Text>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Mes statistiques</Text>
         <View style={styles.statsRow}>
           <StatCard icon="🔖" value={totalBookmarks} label="Favoris" />
-          <StatCard icon="📚" value={historyCount} label="Chapitres lus" />
-          <StatCard icon="📖" value={66} label="Livres" />
+          <StatCard icon="📅" value={readingDays}    label="Jours lus" />
+          <StatCard icon="📊" value={`${progressPct}%`} label="Progression" />
         </View>
-
-        {/* Mention version */}
-        <Text style={[styles.version, { color: colors.textMuted }]}>
-          Louis Segond 1910 · Domaine public
-        </Text>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  settingsBtn: {
-    padding: 6,
-  },
-  settingsIcon: {
-    fontSize: 24,
-  },
-  scroll: {
-    paddingTop: 20,
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  resumeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: 16,
-    borderRadius: 12,
-    padding: 18,
-  },
-  resumeLabel: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.85,
-    marginBottom: 4,
-  },
-  resumeChapter: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: 'Georgia',
-  },
-  resumeArrow: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '300',
-  },
-  testamentRow: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    gap: 12,
-  },
-  testamentCard: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
-    alignItems: 'center',
-    gap: 4,
-  },
-  testamentIcon: {
-    fontSize: 28,
-    marginBottom: 4,
-  },
-  testamentTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  testamentSub: {
-    fontSize: 12,
-  },
-  testamentCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    gap: 10,
-  },
-  version: {
-    textAlign: 'center',
-    fontSize: 11,
-    marginTop: 16,
-    fontStyle: 'italic',
-  },
+  root: { flex: 1 },
+  scroll: { paddingTop: 20, gap: 12 },
+  sectionTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginHorizontal: 16, marginTop: 8, marginBottom: 4 },
+  resumeCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, borderRadius: 12, padding: 18 },
+  resumeLabel: { color: '#fff', fontSize: 12, fontWeight: '600', opacity: 0.85, marginBottom: 4 },
+  resumeChapter: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  resumeArrow: { color: '#fff', fontSize: 24 },
+  testamentRow: { flexDirection: 'row', marginHorizontal: 16, gap: 12 },
+  testamentCard: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 16, alignItems: 'center' },
+  testamentIcon: { fontSize: 28, marginBottom: 4 },
+  testamentTitle: { fontSize: 15, fontWeight: '700' },
+  testamentSub: { fontSize: 12 },
+  statsRow: { flexDirection: 'row', marginHorizontal: 16, gap: 10 },
 });
