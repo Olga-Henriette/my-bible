@@ -6,10 +6,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, useCallback, useRef } from 'react';
+
+import { useInfiniteScroll } from '@/hooks/useOptimization';
 
 import { useSettings } from '@/services/SettingsContext';
 import { useBible } from '@/hooks/useBible';
@@ -62,6 +65,14 @@ export default function ReadScreen() {
   const flatListRef = useRef<FlatList>(null);
   const pinchBaseSize = useRef<number | null>(null);
   const isInternalChange = useRef(false);
+
+  // Si un verset cible est demandé, on bypass l'infinite scroll pour permettre le positionnement direct
+  const finalVerses = currentChapter?.verses ?? [];
+  const { displayedData, loadMore } = useInfiniteScroll(
+    finalVerses, 
+    targetVerse !== null ? finalVerses.length : 25, 
+    20
+  );
 
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteVerse, setNoteVerse]         = useState<Verse | null>(null);
@@ -267,13 +278,18 @@ export default function ReadScreen() {
       <View style={styles.listContainer} {...panResponder.panHandlers}>
         <FlatList
             ref={flatListRef}
-            data={currentChapter?.verses ?? []}
+            data={displayedData} // Utilise la pagination transparente
             keyExtractor={item => `${item.book}-${item.chapter}-${item.verse}`}
-            initialNumToRender={15}
-            maxToRenderPerBatch={10}
-            windowSize={5}
-            removeClippedSubviews={false}
+            initialNumToRender={25}
+            maxToRenderPerBatch={20}
+            windowSize={3}
+            removeClippedSubviews={Platform.OS === 'android'}
             contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
+            
+            // INFINITE SCROLL
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.7}
+
             onScrollToIndexFailed={(info) => {
               flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
               setTimeout(() => {

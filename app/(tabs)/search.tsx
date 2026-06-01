@@ -12,6 +12,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 
+import { debounce,useInfiniteScroll } from '@/hooks/useOptimization';
+import { useState, useEffect } from 'react';
+
 import { useSettings } from '@/services/SettingsContext';
 import { useSearch } from '@/hooks/useSearch';
 
@@ -42,6 +45,27 @@ export default function SearchScreen() {
     changeTestament,
     clearSearch,
   } = useSearch();
+
+  const [localQuery, setLocalQuery] = useState(query);
+
+  // Synchroniser si le bouton effacer est pressé
+  useEffect(() => {
+    setLocalQuery(query);
+  }, [query]);
+
+  const debouncedSearch = useCallback(
+    debounce((text: string) => {
+      search(text);
+    }, 300),
+    [search]
+  );
+
+  const handleTextChange = (text: string) => {
+    setLocalQuery(text); 
+    debouncedSearch(text); // 300ms 
+  };
+
+  const { displayedData, loadMore } = useInfiniteScroll(results, 20, 20);
 
   const handleResultPress = useCallback(
       (verse: Verse) => {
@@ -123,8 +147,8 @@ export default function SearchScreen() {
       {/* Barre de recherche */}
       <View style={[styles.searchWrapper, { backgroundColor: colors.background }]}>
         <SearchBar
-          value={query}
-          onChangeText={text => search(text)}
+          value={localQuery}
+          onChangeText={handleTextChange}
           onClear={clearSearch}
         />
 
@@ -163,7 +187,7 @@ export default function SearchScreen() {
 
       {/* Résultats */}
       <FlatList
-        data={results}
+        data={displayedData}
         keyExtractor={item => `${item.book}-${item.chapter}-${item.verse}`}
         renderItem={({ item }) => (
           <SearchResultItem
@@ -180,6 +204,10 @@ export default function SearchScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+
+        //INFINITE SCROLL
+        onEndReached={loadMore} // Chargement du lot suivant
+        onEndReachedThreshold={0.5} // à 50% du bas de l'écran
       />
     </KeyboardAvoidingView>
   );
